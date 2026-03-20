@@ -1,0 +1,61 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"python.defaultInterpreterPath": "C:\\Users\\Dharahas H\\Kicks\\Projects\\LeadershipInsightsAgent\\backend\\.venv",
+		"[python]": {
+			"editor.defaultFormatter": "charliermarsh.ruff",
+			"editor.formatOnSave": true,
+			"editor.codeActionsOnSave": {
+				"source.fixAll": "explicit",
+				"source.organizeImports": "explicit"
+			}
+		},
+		"ruff.lint.enable": true,
+		"files.exclude": {
+			"**/__pycache__": true,
+			"**/*.pyc": true,
+			"**/.ruff_cache": true
+		},
+		"files.watcherExclude": {
+			"**/.git/objects/**": true,
+			"**/.git/subtree-cache/**": true,
+			"**/node_modules/**": true,
+			"**/.venv/**": true,
+			"**/__pycache__/**": true
+		},
+		"python.analysis.autoImportCompletions": true,
+		"python.terminal.activateEnvironment": true
+	},
+	"extensions": {
+		"recommendations": [
+			"charliermarsh.ruff",
+			"ms-python.python",
+			"ms-python.vscode-pylance"
+		]
+	},
+	"launch": {
+		"version": "0.2.0",
+		"configurations": [
+			{
+				"name": "Python: Current File",
+				"type": "debugpy",
+				"request": "launch",
+				"program": "${file}",
+				"console": "integratedTerminal",
+				"justMyCode": true
+			},
+			{
+				"name": "Python: Main",
+				"type": "debugpy",
+				"request": "launch",
+				"program": "${workspaceFolder}/main.py",
+				"console": "integratedTerminal",
+				"justMyCode": true
+			}
+		]
+	}
+}
