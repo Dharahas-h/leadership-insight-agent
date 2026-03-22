@@ -85,9 +85,8 @@ async def process_document(document_id: str) -> AsyncGenerator[str]:
                 document_path=file_path,
             )
 
-            # Sentence-based chunking for plain text
             chunking_strategy = get_chunking_strategy(
-                strategy="sentence", target_size=1000, min_size=100
+                strategy="fixed", target_size=1000, min_size=100
             )
             chunks = chunking_strategy.chunk(parsed_content, metadata=chunk_metadata)
 
