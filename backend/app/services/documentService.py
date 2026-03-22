@@ -5,7 +5,7 @@ from uuid import uuid4
 
 from pydantic import BaseModel
 
-from app.services.chunkingService import get_chunking_strategy
+from app.services.chunkingService import Metadata, get_chunking_strategy
 from app.services.embeddingService import get_embedding_service
 from app.services.parsingService import parse_document
 
@@ -24,6 +24,7 @@ class DocumentEntry(BaseModel):
     error: str | None = None
     size: int
     chunks_path: str | None = None
+    type: str | None = None
 
 
 async def process_document(document_id: str) -> AsyncGenerator[str]:
@@ -64,12 +65,24 @@ async def process_document(document_id: str) -> AsyncGenerator[str]:
         with open(DOCUMENT_INDEX_PATH, "w") as f:
             json.dump(document_index, f, indent=2)
 
-        yield f"data: {json.dumps({'status': 'parsing', 'message': 'Parsing document...'})}\n\n"
+        yield f"data: {json.dumps({'status': 'parsing', 'message': 'Parsing document with structure awareness...'})}\n\n"
 
-        # Parse the document
+        # Parse the document with unstructured library for structure awareness
         try:
-            text_content = parse_document(file_path)
-            yield f"data: {json.dumps({'status': 'parsed', 'message': f'Extracted {len(text_content)} characters'})}\n\n"
+            # Check file extension to determine parsing method
+            file_ext = Path(file_path).suffix.lower()
+            use_structure_aware = file_ext in [".pdf", ".docx"]
+
+            parsed_content = parse_document(
+                file_path, use_unstructured=use_structure_aware
+            )
+
+            if isinstance(parsed_content, list):
+                # Structure-aware parsing returned elements
+                yield f"data: {json.dumps({'status': 'parsed', 'message': f'Extracted {len(parsed_content)} structured elements'})}\n\n"
+            else:
+                # Plain text parsing
+                yield f"data: {json.dumps({'status': 'parsed', 'message': f'Extracted {len(parsed_content)} characters'})}\n\n"
         except Exception as e:
             document_entry["status"] = "failed"
             document_entry["error"] = f"Parsing error: {e!s}"
@@ -82,18 +95,33 @@ async def process_document(document_id: str) -> AsyncGenerator[str]:
         yield f"data: {json.dumps({'status': 'chunking', 'message': 'Creating chunks...'})}\n\n"
 
         try:
-            # Use sentence-based chunking for better semantic coherence
-            chunking_strategy = get_chunking_strategy(
-                strategy="fixed", chunk_size=1000, overlap=200
+            # Create metadata for chunks
+            chunk_metadata = Metadata(
+                document_name=document_entry["filename"],
+                document_path=file_path,
             )
 
-            chunks = chunking_strategy.chunk(
-                text_content,
-                metadata={
-                    "document_id": document_id,
-                    "filename": document_entry["filename"],
-                },
-            )
+            # Use structure-aware chunking for structured content, otherwise use sentence-based
+            if isinstance(parsed_content, list):
+                # Structure-aware chunking for reports and structured documents
+                chunking_strategy = get_chunking_strategy(
+                    strategy="structure",
+                    target_size=1500,
+                    max_size=2000,
+                    combine_titles=True,
+                    preserve_tables=True,
+                )
+                chunks = chunking_strategy.chunk(
+                    parsed_content, metadata=chunk_metadata
+                )
+            else:
+                # Sentence-based chunking for plain text
+                chunking_strategy = get_chunking_strategy(
+                    strategy="sentence", target_size=1000, min_size=100
+                )
+                chunks = chunking_strategy.chunk(
+                    parsed_content, metadata=chunk_metadata
+                )
 
             document_entry["total_chunks"] = len(chunks)
             yield f"data: {json.dumps({'status': 'chunked', 'message': f'Created {len(chunks)} chunks'})}\n\n"

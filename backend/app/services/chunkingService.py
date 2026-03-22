@@ -1,5 +1,6 @@
 import re
 from dataclasses import dataclass
+from typing import Any
 
 from pydantic import BaseModel
 
@@ -7,6 +8,8 @@ from pydantic import BaseModel
 class Metadata(BaseModel):
     document_name: str
     document_path: str
+    element_type: str | None = None
+    page_number: int | None = None
 
 
 @dataclass
@@ -191,12 +194,194 @@ class ParagraphChunking(ChunkingStrategy):
         return chunks
 
 
+class StructureAwareChunking(ChunkingStrategy):
+    """
+    Structure-aware chunking for documents parsed with unstructured library.
+    Groups elements by semantic structure (sections, subsections, etc.) while respecting size limits.
+    Ideal for annual reports, quarterly reports, and structured business documents.
+    """
+
+    def __init__(
+        self,
+        target_size: int = 1500,
+        max_size: int = 2000,
+        combine_titles: bool = True,
+        preserve_tables: bool = True,
+    ):
+        """
+        Args:
+            target_size: Target chunk size in characters
+            max_size: Maximum chunk size before forced split
+            combine_titles: If True, combine titles with following content
+            preserve_tables: If True, keep tables as separate chunks
+        """
+        self.target_size = target_size
+        self.max_size = max_size
+        self.combine_titles = combine_titles
+        self.preserve_tables = preserve_tables
+
+    def chunk(
+        self, structured_elements: list[dict[str, Any]], metadata: Metadata = None
+    ) -> list[Chunk]:
+        """
+        Chunk structured elements from unstructured library.
+
+        Args:
+            structured_elements: List of elements from unstructured parser
+            metadata: Document metadata
+
+        Returns:
+            List of chunks preserving document structure
+        """
+        if metadata is None:
+            metadata = Metadata(document_name="Unknown", document_path="Unknown")
+
+        chunks = []
+        chunk_index = 0
+        current_chunk_elements = []
+        current_size = 0
+        current_title = None
+
+        for element in structured_elements:
+            element_type = element.get("type", "Text")
+            element_text = element.get("text", "").strip()
+
+            if not element_text:
+                continue
+
+            element_len = len(element_text)
+
+            # Handle titles - store for combining with next chunk
+            if element_type == "Title" and self.combine_titles:
+                if current_chunk_elements:
+                    # Save current chunk before starting new section
+                    chunks.append(
+                        self._create_chunk(
+                            current_chunk_elements,
+                            chunk_index,
+                            metadata,
+                            current_title,
+                        )
+                    )
+                    chunk_index += 1
+                    current_chunk_elements = []
+                    current_size = 0
+
+                current_title = element_text
+                current_chunk_elements.append(element)
+                current_size += element_len
+                continue
+
+            # Handle tables - keep as separate chunks if preserve_tables is True
+            if element_type == "Table" and self.preserve_tables:
+                # Save current chunk if any
+                if current_chunk_elements:
+                    chunks.append(
+                        self._create_chunk(
+                            current_chunk_elements,
+                            chunk_index,
+                            metadata,
+                            current_title,
+                        )
+                    )
+                    chunk_index += 1
+                    current_chunk_elements = []
+                    current_size = 0
+                    current_title = None
+
+                # Create table chunk
+                chunks.append(
+                    self._create_chunk([element], chunk_index, metadata, "Table")
+                )
+                chunk_index += 1
+                continue
+
+            # Check if adding this element would exceed target size
+            if current_size + element_len > self.target_size and current_chunk_elements:
+                # Create chunk from accumulated elements
+                chunks.append(
+                    self._create_chunk(
+                        current_chunk_elements, chunk_index, metadata, current_title
+                    )
+                )
+                chunk_index += 1
+                current_chunk_elements = [element]
+                current_size = element_len
+                current_title = None
+            else:
+                current_chunk_elements.append(element)
+                current_size += element_len
+
+                # Force split if max size exceeded
+                if current_size > self.max_size:
+                    chunks.append(
+                        self._create_chunk(
+                            current_chunk_elements,
+                            chunk_index,
+                            metadata,
+                            current_title,
+                        )
+                    )
+                    chunk_index += 1
+                    current_chunk_elements = []
+                    current_size = 0
+                    current_title = None
+
+        # Add remaining elements as final chunk
+        if current_chunk_elements:
+            chunks.append(
+                self._create_chunk(
+                    current_chunk_elements, chunk_index, metadata, current_title
+                )
+            )
+
+        return chunks
+
+    def _create_chunk(
+        self,
+        elements: list[dict[str, Any]],
+        chunk_index: int,
+        base_metadata: Metadata,
+        title: str | None = None,
+    ) -> Chunk:
+        """Create a chunk from a list of elements."""
+        # Combine element texts
+        texts = [elem.get("text", "") for elem in elements]
+        chunk_text = "\n\n".join(texts)
+
+        # Extract metadata from first element
+        first_elem_meta = elements[0].get("metadata", {})
+        page_number = first_elem_meta.get("page_number")
+        element_types = [elem.get("type", "Text") for elem in elements]
+
+        # Create enriched metadata
+        chunk_metadata = Metadata(
+            document_name=base_metadata.document_name,
+            document_path=base_metadata.document_path,
+            element_type=", ".join(set(element_types)),
+            page_number=page_number,
+        )
+
+        # Prepend title if available
+        if title and not chunk_text.startswith(title):
+            chunk_text = f"{title}\n\n{chunk_text}"
+
+        return Chunk(
+            text=chunk_text,
+            chunk_index=chunk_index,
+            start_char=0,  # Not applicable for structure-aware chunking
+            end_char=len(chunk_text),
+            metadata=chunk_metadata,
+        )
+
+
 def get_chunking_strategy(strategy: str = "fixed", **kwargs) -> ChunkingStrategy:
     """Factory function to get a chunking strategy."""
     strategies = {
         "fixed": FixedSizeChunking,
         "sentence": SentenceChunking,
         "paragraph": ParagraphChunking,
+        "structure": StructureAwareChunking,
     }
 
     if strategy not in strategies:

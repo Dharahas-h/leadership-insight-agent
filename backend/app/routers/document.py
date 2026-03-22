@@ -9,7 +9,7 @@ from fastapi.responses import StreamingResponse
 from app.services.documentService import DocumentEntry, process_document
 
 
-router = APIRouter(prefix="/document")
+router = APIRouter(prefix="/document", tags=["Document"])
 
 DOCUMENT_INDEX_PATH = Path("uploads/document.json")
 
@@ -42,6 +42,7 @@ async def upload_document(file: UploadFile):
         total_chunks=0,
         embedded_chunks=0,
         size=file.size,
+        type=file.content_type,
     )
 
     # Add to index
@@ -50,13 +51,6 @@ async def upload_document(file: UploadFile):
     # Save updated index
     with open(DOCUMENT_INDEX_PATH, "w") as f:
         json.dump(document_index, f, indent=2)
-
-    # TODO: process/parse the document
-    # TODO: chunk the document
-    # TODO: embed each chunk
-    # TODO: store the embeddings and chunks
-    # TODO: update document_entry with total_chunks and embedded_chunks
-    # TODO: update status to "completed" or "failed"
 
     return {
         "document_id": document_id,
@@ -67,7 +61,9 @@ async def upload_document(file: UploadFile):
 
 @router.get("/embed/{document_id}")
 async def embed_document(document_id: str):
-    return StreamingResponse(process_document(document_id))
+    return StreamingResponse(
+        process_document(document_id), media_type="text/event-stream"
+    )
 
 
 @router.get("/embedded-docs")
@@ -81,3 +77,35 @@ async def get_embedded_documents():
 
     # Output filenames and file-ids
     return json.dumps(document_index)
+
+
+@router.delete("/delete/{document_id}")
+async def delete_document(document_id: str):
+    with open(DOCUMENT_INDEX_PATH) as f:
+        document_index = json.load(f)
+
+    if document_id not in document_index:
+        return {"deleted"}
+
+    filename = document_index[document_id]["filename"]
+    Path(f"./uploads/{filename}").unlink(missing_ok=True)
+    Path(f"./uploads/chunks/{document_id}_chunks.json").unlink(missing_ok=True)
+
+    with open("./uploads/embeddings.json") as f:
+        embeddings_index: list = json.load(f)
+
+    new_embeddings_index = [
+        index
+        for index in embeddings_index
+        if (index["metadata"]["document_id"] != document_id)
+    ]
+
+    with open("./uploads/embeddings.json", "w") as f:
+        json.dump(new_embeddings_index, f, indent=2)
+
+    del document_index[document_id]
+
+    with open(DOCUMENT_INDEX_PATH, "w") as f:
+        json.dump(document_index, f, indent=2)
+
+    return {"ok"}

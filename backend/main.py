@@ -3,6 +3,7 @@ from agent_framework.observability import configure_otel_providers
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.routers.chat import router as chat_router
 from app.routers.document import router as document_router
 
 
@@ -15,6 +16,7 @@ app = FastAPI(
 )
 
 app.include_router(document_router)
+app.include_router(chat_router)
 
 app.add_middleware(
     CORSMiddleware,

@@ -11,7 +11,8 @@ dependencies = [
     "uvicorn (>=0.42.0,<0.43.0)",
     "pypdf2 (>=3.0.1,<4.0.0)",
     "python-docx (>=1.2.0,<2.0.0)",
-    "opentelemetry-exporter-otlp-proto-grpc (>=1.40.0,<2.0.0)"
+    "opentelemetry-exporter-otlp-proto-grpc (>=1.40.0,<2.0.0)",
+    "unstructured[docx,pdf] (>=0.21.5,<0.22.0)"
 ]
 
 

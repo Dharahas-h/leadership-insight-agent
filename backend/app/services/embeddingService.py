@@ -59,6 +59,35 @@ class EmbeddingService:
 
         return embeddings
 
+    def get_similarity_score(
+        self, embedding1: list[float], embedding2: list[float]
+    ) -> float:
+        """
+        Calculate cosine similarity between two embeddings.
+
+        Args:
+            embedding1: First embedding vector
+            embedding2: Second embedding vector
+
+        Returns:
+            Similarity score between -1 and 1 (1 means identical, 0 means orthogonal, -1 means opposite)
+        """
+        # Convert to numpy arrays for efficient computation
+        vec1 = np.array(embedding1)
+        vec2 = np.array(embedding2)
+
+        # Calculate cosine similarity
+        dot_product = np.dot(vec1, vec2)
+        norm1 = np.linalg.norm(vec1)
+        norm2 = np.linalg.norm(vec2)
+
+        # Avoid division by zero
+        if norm1 == 0 or norm2 == 0:
+            return 0.0
+
+        similarity = dot_product / (norm1 * norm2)
+        return float(similarity)
+
 
 def get_embedding_service(
     model_name: str = "text-embedding-3-small",
