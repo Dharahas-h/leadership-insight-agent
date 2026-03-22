@@ -60,29 +60,13 @@ async def process_document(document_id: str) -> AsyncGenerator[str]:
 
         file_path = document_entry["file_path"]
 
-        # Update status to processing
         document_entry["status"] = "processing"
         with open(DOCUMENT_INDEX_PATH, "w") as f:
             json.dump(document_index, f, indent=2)
 
-        yield f"data: {json.dumps({'status': 'parsing', 'message': 'Parsing document with structure awareness...'})}\n\n"
-
         # Parse the document with unstructured library for structure awareness
         try:
-            # Check file extension to determine parsing method
-            file_ext = Path(file_path).suffix.lower()
-            use_structure_aware = file_ext in [".pdf", ".docx"]
-
-            parsed_content = parse_document(
-                file_path, use_unstructured=use_structure_aware
-            )
-
-            if isinstance(parsed_content, list):
-                # Structure-aware parsing returned elements
-                yield f"data: {json.dumps({'status': 'parsed', 'message': f'Extracted {len(parsed_content)} structured elements'})}\n\n"
-            else:
-                # Plain text parsing
-                yield f"data: {json.dumps({'status': 'parsed', 'message': f'Extracted {len(parsed_content)} characters'})}\n\n"
+            parsed_content = parse_document(file_path)
         except Exception as e:
             document_entry["status"] = "failed"
             document_entry["error"] = f"Parsing error: {e!s}"
@@ -101,27 +85,11 @@ async def process_document(document_id: str) -> AsyncGenerator[str]:
                 document_path=file_path,
             )
 
-            # Use structure-aware chunking for structured content, otherwise use sentence-based
-            if isinstance(parsed_content, list):
-                # Structure-aware chunking for reports and structured documents
-                chunking_strategy = get_chunking_strategy(
-                    strategy="structure",
-                    target_size=1500,
-                    max_size=2000,
-                    combine_titles=True,
-                    preserve_tables=True,
-                )
-                chunks = chunking_strategy.chunk(
-                    parsed_content, metadata=chunk_metadata
-                )
-            else:
-                # Sentence-based chunking for plain text
-                chunking_strategy = get_chunking_strategy(
-                    strategy="sentence", target_size=1000, min_size=100
-                )
-                chunks = chunking_strategy.chunk(
-                    parsed_content, metadata=chunk_metadata
-                )
+            # Sentence-based chunking for plain text
+            chunking_strategy = get_chunking_strategy(
+                strategy="sentence", target_size=1000, min_size=100
+            )
+            chunks = chunking_strategy.chunk(parsed_content, metadata=chunk_metadata)
 
             document_entry["total_chunks"] = len(chunks)
             yield f"data: {json.dumps({'status': 'chunked', 'message': f'Created {len(chunks)} chunks'})}\n\n"

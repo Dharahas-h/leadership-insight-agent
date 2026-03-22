@@ -3,13 +3,9 @@ from typing import Any
 
 import PyPDF2
 from docx import Document
-from unstructured.partition.auto import partition
-from unstructured.partition.pdf import partition_pdf
 
 
-def parse_document(
-    file_path: str, use_unstructured: bool = True
-) -> str | list[dict[str, Any]]:
+def parse_document(file_path: str) -> str | list[dict[str, Any]]:
     """
     Parse a document and extract its text content.
 
@@ -27,10 +23,6 @@ def parse_document(
 
     # Get file extension
     extension = file_path_obj.suffix.lower()
-
-    # Use unstructured library for PDFs and DOCX for better structure preservation
-    if use_unstructured and extension in [".pdf", ".docx"]:
-        return _parse_with_unstructured(file_path)
 
     # Parse based on file type (legacy methods)
     if extension == ".txt":
@@ -79,55 +71,3 @@ def _parse_docx(file_path: str) -> str:
         raise ImportError from ImportError(
             "python-docx is required for DOCX parsing. Install it with: pip install python-docx"
         )
-
-
-def _parse_with_unstructured(file_path: str) -> list[dict[str, Any]]:
-    """
-    Parse a document using unstructured library for structure-aware extraction.
-    This method preserves document structure like titles, sections, tables, etc.
-    Ideal for annual reports, quarterly reports, and structured documents.
-
-    Args:
-        file_path: Path to the document file
-
-    Returns:
-        List of structured elements with metadata
-    """
-    file_path_obj = Path(file_path)
-    extension = file_path_obj.suffix.lower()
-
-    # Use specialized PDF partitioner for better results
-    if extension == ".pdf":
-        try:
-            # Try high-resolution strategy first (requires poppler/tesseract)
-            elements = partition_pdf(
-                filename=file_path,
-                strategy="fasts",  # High resolution for better accuracy
-                include_page_breaks=True,  # Preserve page structure
-            )
-        except Exception:
-            # Fallback to fast strategy if system dependencies not available
-            elements = partition_pdf(
-                filename=file_path,
-                strategy="fast",  # Uses PyPDF2, no extra dependencies needed
-                include_page_breaks=True,
-            )
-    else:
-        # Auto-detect for other formats
-        elements = partition(filename=file_path)
-
-    # Convert elements to structured format
-    structured_elements = []
-    for idx, element in enumerate(elements):
-        structured_elements.append(
-            {
-                "element_id": idx,
-                "type": element.category,
-                "text": str(element),
-                "metadata": element.metadata.to_dict()
-                if hasattr(element.metadata, "to_dict")
-                else {},
-            }
-        )
-
-    return structured_elements

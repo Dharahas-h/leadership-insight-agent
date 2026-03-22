@@ -1,11 +1,35 @@
+/* Global CSS Reset and Base Styles */
+
 :root {
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
+  /* Beige Color Palette */
+  --color-bg-primary: #f5f5dc;
+  --color-bg-secondary: #faf8f3;
+  --color-bg-tertiary: #f0ead6;
+  --color-accent-primary: #d2b48c;
+  --color-accent-secondary: #c19a6b;
+  --color-text-primary: #5c4033;
+  --color-text-secondary: #8b7355;
+  --color-border-light: #e8dcc8;
+  --color-border-medium: #d2b48c;
+
+  /* Typography */
+  font-family:
+    'Inter',
+    'Segoe UI',
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Roboto',
+    'Oxygen',
+    'Ubuntu',
+    'Cantarell',
+    sans-serif;
+  line-height: 1.6;
   font-weight: 400;
 
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+  color-scheme: light;
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-primary);
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -13,19 +37,29 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
 body {
   margin: 0;
-  display: flex;
-  place-items: center;
   min-width: 320px;
   min-height: 100vh;
+  background: linear-gradient(
+    135deg,
+    var(--color-bg-primary) 0%,
+    var(--color-bg-tertiary) 100%
+  );
 }
 
 #root {
   width: 100%;
-  margin: 0;
+  min-height: 100vh;
 }
 
+/* Global Button Styles */
 button {
   border-radius: 8px;
   border: 1px solid transparent;
@@ -33,14 +67,45 @@ button {
   font-weight: 500;
   font-family: inherit;
   cursor: pointer;
-  transition: border-color 0.25s;
+  transition: all 0.3s ease;
 }
 
 button:hover {
-  border-color: #646cff;
+  border-color: var(--color-accent-secondary);
 }
 
 button:focus,
 button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
+  outline: 2px solid var(--color-accent-secondary);
+  outline-offset: 2px;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-bg-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-accent-primary);
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-accent-secondary);
+}
+
+/* Selection Styling */
+::selection {
+  background-color: var(--color-accent-primary);
+  color: var(--color-text-primary);
 }

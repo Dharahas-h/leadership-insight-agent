@@ -24,7 +24,7 @@ def example_structure_aware_parsing(pdf_path: str):
 
     # Parse with unstructured library (structure-aware)
     print(f"\nParsing document: {pdf_path}")
-    structured_elements = parse_document(pdf_path, use_unstructured=True)
+    structured_elements = parse_document(pdf_path)
 
     if isinstance(structured_elements, list):
         print(f"\n✓ Extracted {len(structured_elements)} structured elements")
