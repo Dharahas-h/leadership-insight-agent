@@ -1,41 +1,12 @@
 import json
 from collections.abc import AsyncGenerator
 from pathlib import Path
+from typing import Generator
 
-from pydantic import BaseModel, RootModel
-
-from app.services.chunkingService import Chunk, Metadata, get_chunking_strategy
+from app.constants import DOCUMENT_INDEX_PATH, DocumentIndex, EmbeddingsEntry, EmbeddingsIndex
+from app.services.chunkingService import Chunk, Metadata, chunk_parsed_document, get_chunking_strategy
 from app.services.embeddingService import get_embedding_service
-from app.services.parsingService import parse_document
-
-
-DOCUMENT_INDEX_PATH = Path("uploads/document.json")
-
-
-class DocumentEntry(BaseModel):
-    document_id: str
-    filename: str
-    file_path: str
-    status: str
-    uploaded_at: str
-    total_chunks: int
-    embedded_chunks: int
-    error: str | None = None
-    size: int
-    chunks_path: str | None = None
-    type: str | None = None
-
-
-class EmbeddingsEntry(BaseModel):
-    chunk_id: str
-    chunk: str
-    metadata: dict
-    embedding: list[float]
-
-
-DocumentIndex = RootModel[dict[str, DocumentEntry]]
-
-EmbeddingsIndex = RootModel[list[EmbeddingsEntry]]
+from app.services.parsingService import parse_doc
 
 
 async def process_document(document_id: str) -> AsyncGenerator[str]:
@@ -65,75 +36,24 @@ async def process_document(document_id: str) -> AsyncGenerator[str]:
         document_entry = document_index.root[document_id]
 
         if document_entry.status == "embedded":
-            yield f"data {json.dumps({'status': 'completed', 'message': 'Document already Embedded', 'total_chunks': document_entry['total_chunks']})}"
+            yield f"data: {json.dumps({'status': 'completed', 'message': 'Document already Embedded', 'total_chunks': document_entry['total_chunks']})}\n\n"
             return
 
-        file_path = document_entry.file_path
-
-        document_entry.status = "processing"
+        document_entry.status = "parsing"
         with open(DOCUMENT_INDEX_PATH, "w") as f:
             f.write(document_index.model_dump_json(indent=2))
 
-        # Parse the document with unstructured library for structure awareness
-        # async for progress in parse_doc(document_id):
-        #     yield progress
-        try:
-            parsed_content = parse_document(file_path)
-            with open(f"./uploads/parsed/{document_id}_parse") as f:
-                if isinstance(parsed_content, str):
-                    json.dump({"text": parsed_content}, f, indent=2)
-                else:
-                    json.dump(parsed_content, f, indent=2)
-        except Exception as e:
-            document_entry.status = "failed"
-            document_entry.error = f"Parsing error: {e!s}"
-            with open(DOCUMENT_INDEX_PATH, "w") as f:
-                f.write(document_index.model_dump_json(indent=2))
-            yield f"data: {json.dumps({'status': 'error', 'message': f'Parsing failed: {e!s}'})}\n\n"
-            return
+        #Parse the document with unstructured library for structure awareness
+        async for progress_1 in parse_doc(document_id):
+            yield progress_1
+            
+        async for progress_2 in chunk_parsed_document(document_id):
+            yield progress_2
 
-        document_entry.status = "processed"
-        with open(DOCUMENT_INDEX_PATH, "w") as f:
-            f.write(document_index.model_dump_json(indent=2))
+        async for progress_3 in embed_document(document_id):
+            yield progress_3
 
-        yield f"data: {json.dumps({'status': 'chunking', 'message': 'Creating chunks...'})}\n\n"
-
-        try:
-            # Create metadata for chunks
-            chunk_metadata = Metadata(
-                document_name=document_entry.filename,
-                document_path=file_path,
-            )
-
-            chunks = chunk_parsed_content(parsed_content, chunk_metadata)
-
-            document_entry.total_chunks = len(chunks)
-            yield f"data: {json.dumps({'status': 'chunked', 'message': f'Created {len(chunks)} chunks'})}\n\n"
-
-        except Exception as e:
-            document_entry.error = f"Chunking error: {e!s}"
-            with open(DOCUMENT_INDEX_PATH, "w") as f:
-                f.write(document_index.model_dump_json(indent=2))
-            yield f"data: {json.dumps({'status': 'error', 'message': f'Chunking failed: {e!s}'})}\n\n"
-            return
-
-        # Save chunks to a file for later embedding
-        chunks_path = Path(f"uploads/chunks/{document_id}_chunks.json")
-
-        with open(chunks_path, "w") as f:
-            json.dump(chunks, f, indent=2)
-
-        document_entry.chunks_path = str(chunks_path)
-        document_entry.status = "chunked"
-        document_entry.embedded_chunks = 0
-
-        with open(DOCUMENT_INDEX_PATH, "w") as f:
-            f.write(document_index.model_dump_json(indent=2))
-
-        async for progress in embed_document(document_id):
-            yield progress
-
-        yield f"data: {json.dumps({'status': 'completed', 'message': 'Document processing complete', 'total_chunks': len(chunks)})}\n\n"
+        yield f"data: {json.dumps({'status': 'completed', 'message': 'Document processing complete'})}\n\n"
 
     except Exception as e:
         yield f"data: {json.dumps({'error': f'Unexpected error: {e!s}'})}\n\n"
@@ -186,13 +106,13 @@ async def embed_document(document_id: str) -> AsyncGenerator[str]:
 
         # Load chunks
         with open(chunks_path) as f:
-            chunks_data: list[Chunk] = json.load(f)
+            chunks_data: list[dict] = json.load(f)
 
         total_chunks = len(chunks_data)
         yield f"data: {json.dumps({'status': 'loaded', 'message': f'Loaded {total_chunks} chunks'})}\n\n"
 
         # Extract texts for embedding
-        texts = [chunk.text for chunk in chunks_data]
+        texts = [chunk["text"] for chunk in chunks_data]
 
         yield f"data: {json.dumps({'status': 'embedding', 'message': 'Generating embeddings in parallel...'})}\n\n"
 
@@ -207,14 +127,13 @@ async def embed_document(document_id: str) -> AsyncGenerator[str]:
             embeddings_index = EmbeddingsIndex.model_validate_json(f.read())
 
         for chunk, embedding in zip(chunks_data, embeddings, strict=False):
-            embeddings_index.root.append(
-                {
-                    "chunk_id": chunk.chunk_id,
-                    "chunk": chunk.text,
-                    "metadata": chunk.metadata,
-                    "embedding": embedding,
-                }
+            embeddings_entry = EmbeddingsEntry(
+                chunk_id=chunk["chunk_id"],
+                chunk=chunk["text"],
+                metadata=chunk["metadata"],
+                embedding=embedding
             )
+            embeddings_index.root.append(embeddings_entry)
         with open("./uploads/embeddings.json", "w") as f:
             f.write(embeddings_index.model_dump_json(indent=2))
 
