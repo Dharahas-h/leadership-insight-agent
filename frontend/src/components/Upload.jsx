@@ -81,7 +81,7 @@ function FileCard({ file, onDelete }) {
             </Typography>
           </div>
         </div>
-        {status == 'completed' ? (
+        {(status == 'completed' || status === 'failed') ? (
           <Button
             className="upload-button"
             variant="contained"

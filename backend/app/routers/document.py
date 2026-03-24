@@ -8,6 +8,7 @@ from fastapi.responses import StreamingResponse
 
 from app.constants import (
     DOCUMENT_INDEX_PATH,
+    EMBEDDINGS_INDEX_PATH,
     DocumentEntry,
     DocumentIndex,
 )
@@ -99,7 +100,7 @@ async def delete_document(document_id: str):
     Path(f"./uploads/chunks/{document_id}_chunks.json").unlink(missing_ok=True)
     Path(f"./uploads/parsed/{document_id}_parsed.json").unlink(missing_ok=True)
 
-    with open("./uploads/embeddings.json") as f:
+    with open(EMBEDDINGS_INDEX_PATH) as f:
         embeddings_index: list = json.load(f)
 
     new_embeddings_index = [
@@ -108,7 +109,7 @@ async def delete_document(document_id: str):
         if (index["metadata"]["document_id"] != document_id)
     ]
 
-    with open("./uploads/embeddings.json", "w") as f:
+    with open(EMBEDDINGS_INDEX_PATH, "w") as f:
         json.dump(new_embeddings_index, f, indent=2)
 
     del document_index[document_id]

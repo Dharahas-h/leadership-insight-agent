@@ -5,6 +5,7 @@ from pathlib import Path
 
 import numpy as np
 
+from app.clients import embedding_client
 from app.constants import (
     DOCUMENT_INDEX_PATH,
     EMBEDDINGS_INDEX_PATH,
@@ -39,8 +40,8 @@ class EmbeddingService:
         """
         # TODO: Replace with actual embedding model
         # For now, return a dummy embedding
-        await asyncio.sleep(0.1)  # Simulate API call
-        return np.random.rand(1536).tolist()
+        embedding = await embedding_client.get_embeddings([text])
+        return embedding[0].vector
 
     async def embed_texts_parallel(
         self, texts: list[str], batch_size: int = 10
