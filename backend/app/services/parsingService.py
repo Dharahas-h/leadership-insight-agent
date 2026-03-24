@@ -10,67 +10,30 @@ from app.routers.document import DOCUMENT_INDEX_PATH
 
 
 async def parse_doc(document_id: str):
-    try:
-        with open(DOCUMENT_INDEX_PATH) as f:
-            document_index = DocumentIndex.model_validate_json(f.read())
+    with open(DOCUMENT_INDEX_PATH) as f:
+        document_index = DocumentIndex.model_validate_json(f.read())
 
-        document_entry = document_index.root[document_id]
+    document_entry = document_index.root[document_id]
 
-        extension = Path(document_entry.file_path).suffix.lower()
+    extension = Path(document_entry.file_path).suffix.lower()
 
-        if extension == ".pdf":
-            yield f"data: {json.dumps({'status': 'parsing', 'message': 'parsing pdf...'})}\n\n"
-            parsed_content = _parse_pdf(document_entry.file_path)
-            yield f"data: {json.dumps({'status': 'parsed', 'message': f'extracted {len(parsed_content)} objects from pdf'})}\n\n"
-        else:
-            parsed_content = _parse_text(document_entry.file_path)
-
-        parsed_content_path = Path(f"./uploads/parsed/{document_id}_parsed.json")
-        with open(parsed_content_path, "w") as f:
-            if isinstance(parsed_content, str):
-                json.dump({"text": parsed_content}, f, indent=2)
-            else:
-                json.dump(parsed_content, f, indent=2)
-
-        document_entry.status = "parsed"
-        with open(DOCUMENT_INDEX_PATH, "w") as f:
-            f.write(document_index.model_dump_json(indent=2))
-    except Exception as e:
-            document_entry.status = "failed"
-            document_entry.error = f"Parsing error: {e!s}"
-            with open(DOCUMENT_INDEX_PATH, "w") as f:
-                f.write(document_index.model_dump_json(indent=2))
-            yield f"data: {json.dumps({'status': 'error', 'message': f'Parsing failed: {e!s}'})}\n\n"
-            return
-
-
-def parse_document(file_path: Path) -> str | list[dict[str, Any]]:
-    """
-    Parse a document and extract its text content.
-
-    Args:
-        file_path: Path to the document file
-
-    Returns:
-        For PDFs: list of structured elements if unstructured is available
-        For other files: extracted text content as string
-    """
-
-    if not file_path.exists():
-        raise FileNotFoundError(f"File not found: {file_path}")
-
-    # Get file extension
-    extension = file_path.suffix.lower()
-
-    # Parse based on file type
     if extension == ".pdf":
-        return _parse_pdf(file_path)
-    if extension == ".txt":
-        return _parse_text(file_path)
-    # if extension in [".doc", ".docx"]:
-    #     return _parse_docx(file_path)
-    # Try reading as plain text
-    return _parse_text(file_path)
+        yield f"data: {json.dumps({'status': 'parsing', 'message': 'parsing pdf...'})}\n\n"
+        parsed_content = _parse_pdf(document_entry.file_path)
+        yield f"data: {json.dumps({'status': 'parsed', 'message': f'extracted {len(parsed_content)} objects from pdf'})}\n\n"
+    else:
+        parsed_content = _parse_text(document_entry.file_path)
+
+    parsed_content_path = Path(f"./uploads/parsed/{document_id}_parsed.json")
+    with open(parsed_content_path, "w") as f:
+        if isinstance(parsed_content, str):
+            json.dump({"text": parsed_content}, f, indent=2)
+        else:
+            json.dump(parsed_content, f, indent=2)
+
+    document_entry.status = "parsed"
+    with open(DOCUMENT_INDEX_PATH, "w") as f:
+        f.write(document_index.model_dump_json(indent=2))
 
 
 def _parse_text(file_path: str) -> str:

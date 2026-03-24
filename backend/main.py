@@ -7,7 +7,11 @@ from app.routers.chat import router as chat_router
 from app.routers.document import router as document_router
 
 
-configure_otel_providers(enable_sensitive_data=True, vs_code_extension_port=4317)
+configure_otel_providers(
+    enable_sensitive_data=True,
+    vs_code_extension_port=4317,
+    enable_console_exporters=True,
+)
 
 app = FastAPI(
     title="Leadership Insights Agent API",

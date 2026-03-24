@@ -1,7 +1,22 @@
 from pathlib import Path
+
 from pydantic import BaseModel, RootModel
 
+
+Path("./uploads/chunks").mkdir(exist_ok=True, parents=True)
+Path("./uploads/parsed").mkdir(exist_ok=True, parents=True)
+
 DOCUMENT_INDEX_PATH = Path("uploads/document.json")
+EMBEDDINGS_INDEX_PATH = Path("uploads/embeddings.json")
+
+
+def chunks_path(document_id):
+    return Path(f"uploads/chunks/{document_id}_chunks.json")
+
+
+def embeddings_path(document_id):
+    return Path(f"uploads/parsed/{document_id}_parsed.json")
+
 
 class DocumentEntry(BaseModel):
     document_id: str

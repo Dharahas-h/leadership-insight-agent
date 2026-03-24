@@ -1,12 +1,11 @@
 import json
-from pathlib import Path
 import re
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
 from pydantic import BaseModel
-from torch import chunk
 
 from app.constants import DOCUMENT_INDEX_PATH, DocumentIndex
 
@@ -363,8 +362,9 @@ def get_chunking_strategy(strategy: str = "fixed", **kwargs) -> ChunkingStrategy
 
     return strategies[strategy](**kwargs)
 
+
 async def chunk_parsed_document(document_id: str, strategy: str = "structure"):
-    try: 
+    try:
         yield f"data: {json.dumps({'status': 'chunking', 'message': 'Creating chunks...'})}\n\n"
 
         with open(DOCUMENT_INDEX_PATH) as f:
@@ -377,20 +377,27 @@ async def chunk_parsed_document(document_id: str, strategy: str = "structure"):
         chunk_metadata = Metadata(
             document_name=document_index.root[document_id].filename,
             document_path=document_index.root[document_id].file_path,
-            document_id=document_id
+            document_id=document_id,
         )
         chunks = chunking_strategy.chunk(parsed_content, chunk_metadata)
 
         chunks_path = Path(f"uploads/chunks/{document_id}_chunks.json")
 
         with open(chunks_path, "w") as f:
-            json.dump([{
-                "chunk_id": chunk.chunk_id,
-                "chunk_index": chunk.chunk_index,
-                "text": chunk.text,
-                "metadata": chunk.metadata,
-            } for chunk in chunks], f, indent=2)
-        
+            json.dump(
+                [
+                    {
+                        "chunk_id": chunk.chunk_id,
+                        "chunk_index": chunk.chunk_index,
+                        "text": chunk.text,
+                        "metadata": chunk.metadata,
+                    }
+                    for chunk in chunks
+                ],
+                f,
+                indent=2,
+            )
+
         document_index.root[document_id].total_chunks = len(chunks)
         document_index.root[document_id].chunks_path = str(chunks_path)
         document_index.root[document_id].embedded_chunks = 0
@@ -398,8 +405,8 @@ async def chunk_parsed_document(document_id: str, strategy: str = "structure"):
 
         with open(DOCUMENT_INDEX_PATH, "w") as f:
             f.write(document_index.model_dump_json(indent=2))
-        yield f"data: {json.dumps({ "status": "chunked", "message": f"Document chunked into {len(chunks)} chunks" })}\n\n"
-    
+        yield f"data: {json.dumps({'status': 'chunked', 'message': f'Document chunked into {len(chunks)} chunks'})}\n\n"
+
     except Exception as e:
         document_index.root[document_id].error = f"Chunking error: {e!s}"
         with open(DOCUMENT_INDEX_PATH, "w") as f:
