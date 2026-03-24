@@ -7,11 +7,12 @@ import FolderOpenIcon from '@mui/icons-material/FolderOpen';
 import './Upload.css';
 import axios from 'axios';
 import { Delete } from '@mui/icons-material';
+import { API_BASE_URL } from '../constants';
 
-function FileCard({ file, onUpload, onDelete, isCompleted }) {
+function FileCard({ file, onDelete }) {
   const [loading, setLoading] = useState(false);
   const [progressText, setProgressText] = useState('');
-  const [completed, setCompleted] = useState(isCompleted);
+  const [status, setStatus] = useState(file['status']);
   const [documentId, setDocumentId] = useState(file['documentId'] || null);
 
   const formatFileSize = bytes => {
@@ -24,7 +25,7 @@ function FileCard({ file, onUpload, onDelete, isCompleted }) {
 
   const handleDelete = async () => {
     const response = await axios.delete(
-      `http://localhost:8000/document/delete/${documentId}`
+      `${API_BASE_URL}/document/delete/${documentId}`
     );
     console.log('Delete Response', response);
     onDelete();
@@ -37,22 +38,25 @@ function FileCard({ file, onUpload, onDelete, isCompleted }) {
     const formData = new FormData();
     formData.append('file', file);
     const response = await axios.post(
-      'http://localhost:8000/document/upload/',
+      `${API_BASE_URL}/document/upload/`,
       formData
     );
     const data = response.data;
 
     // Simulated streaming (replace with real backend stream)
     const embedStream = new EventSource(
-      `http://localhost:8000/document/embed/${data['document_id']}`
+      `${API_BASE_URL}/document/embed/${data['document_id']}`
     );
     embedStream.onmessage = event => {
       const eventData = JSON.parse(event.data);
       console.log('message', eventData);
       if (eventData['status'] == 'completed') {
         setLoading(false);
-        setCompleted(true);
-        onUpload(file);
+        setStatus('completed');
+        embedStream.close();
+      } else if (eventData['status'] == 'error') {
+        setLoading(false);
+        setStatus('failed');
         embedStream.close();
       } else {
         setProgressText(eventData['message'] || 'Random Message...');
@@ -60,19 +64,6 @@ function FileCard({ file, onUpload, onDelete, isCompleted }) {
     };
 
     setDocumentId(data['document_id']);
-    // const fakeStream = [
-    //   'Uploading file...',
-    //   'Processing document...',
-    //   'Analyzing content...',
-    //   'Extracting insights...',
-    //   'Finalizing...',
-    //   'Completed!',
-    // ];
-
-    // for (let msg of fakeStream) {
-    //   await new Promise(res => setTimeout(res, 800));
-    //   setProgressText(msg);
-    // }
   };
 
   return (
@@ -90,7 +81,7 @@ function FileCard({ file, onUpload, onDelete, isCompleted }) {
             </Typography>
           </div>
         </div>
-        {completed ? (
+        {(status == 'completed' || status === 'failed') ? (
           <Button
             className="upload-button"
             variant="contained"
@@ -106,7 +97,7 @@ function FileCard({ file, onUpload, onDelete, isCompleted }) {
             variant="contained"
             startIcon={<CloudUploadIcon />}
             onClick={handleUpload}
-            disabled={loading || completed}
+            disabled={loading}
           >
             {loading ? 'Uploading...' : 'Upload File'}
           </Button>
@@ -120,12 +111,18 @@ function FileCard({ file, onUpload, onDelete, isCompleted }) {
         </div>
       )}
 
-      {completed && (
-        <div className="success-message">
-          <CheckCircleIcon />
-          <span>Upload completed successfully!</span>
-        </div>
-      )}
+      {status &&
+        (status == 'completed' ? (
+          <div className="success-message">
+            <CheckCircleIcon />
+            <span>Upload completed successfully!</span>
+          </div>
+        ) : (
+          <div className="error-message">
+            <CheckCircleIcon />
+            <span>Failed to process document, delete and try again</span>
+          </div>
+        ))}
     </Paper>
   );
 }
@@ -136,7 +133,7 @@ export default function Upload() {
   const loadDocuments = async () => {
     try {
       const response = await axios.get(
-        'http://localhost:8000/document/embedded-docs'
+        `${API_BASE_URL}/document/embedded-docs`
       );
       console.log('Response', response);
       if (response.status == 200) {
@@ -150,7 +147,7 @@ export default function Upload() {
             name: file['filename'],
             type: file['type'],
             size: file['size'],
-            isCompleted: true,
+            status: file['status'],
           });
         });
         setFiles([...files, ...newFiles]);
@@ -171,8 +168,7 @@ export default function Upload() {
   }, []);
 
   const handleDelete = index => {
-    const newFiles = files.filter((_, i) => i != index);
-    setFiles(newFiles);
+    setFiles(prev => prev.filter((_, i) => i != index) || []);
   };
 
   const handleDragOver = event => {
@@ -182,10 +178,7 @@ export default function Upload() {
   const handleFileSelect = event => {
     const selectedFiles = Array.from(event.target.files);
     setFiles(prev => [...prev, ...selectedFiles]);
-  };
-
-  const handleUploadComplete = file => {
-    console.log('Uploaded:', file.name);
+    event.target.value = '';
   };
 
   return (
@@ -226,8 +219,6 @@ export default function Upload() {
             <FileCard
               key={index}
               file={file}
-              isCompleted={file.isCompleted || false}
-              onUpload={handleUploadComplete}
               onDelete={() => handleDelete(index)}
             />
           ))}

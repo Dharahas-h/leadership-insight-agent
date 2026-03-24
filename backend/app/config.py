@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     azure_openai_base_url: str = Field(default="", env="AZURE_OPENAI_BASE_URL")
     azure_api_version: str = Field(default="", env="AZURE_API_VERSION")
     openai_model_name: str = Field(default="", env="OPENAI_MODEL_NAME")
+    embedding_model_name: str = Field(default="", env="EMBEDDING_MODEL_NAME")
 
     class Config:
         env_file = ".env"

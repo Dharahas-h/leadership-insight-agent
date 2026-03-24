@@ -253,20 +253,27 @@
   align-items: center;
   justify-content: center;
   gap: 0.75rem;
-  color: #5c4033 !important;
+  color: #38a169 !important;
   font-weight: 600;
   padding: 1rem;
   background: linear-gradient(135deg, #f0f8f0 0%, #e8f5e8 100%);
   border-radius: 10px;
   border: 2px solid #a8d5a8;
-  margin-top: 1.25center;
-  gap: 0.5rem;
-  color: #38a169 !important;
+  margin-top: 1.25rem;
+}
+
+.error-message {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  color: #c53030 !important;
   font-weight: 600;
-  padding: 0.75rem;
-  background: #f0fff4;
-  border-radius: 8px;
-  border: 1px solid #9ae6b4;
+  padding: 1rem;
+  background: linear-gradient(135deg, #fff5f5 0%, #fed7d7 100%);
+  border-radius: 10px;
+  border: 2px solid #fc8181;
+  margin-top: 1.25rem;
 }
 
 .empty-state-icon {

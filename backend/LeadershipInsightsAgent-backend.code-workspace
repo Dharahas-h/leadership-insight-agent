@@ -5,7 +5,7 @@
 		}
 	],
 	"settings": {
-		"python.defaultInterpreterPath": "C:\\Users\\Dharahas H\\Kicks\\Projects\\LeadershipInsightsAgent\\backend\\.venv",
+		"python.defaultInterpreterPath": "c:/Users/DharahasHanumanthu/Personal/Insights/backend/.venv/Scripts/python.exe",
 		"[python]": {
 			"editor.defaultFormatter": "charliermarsh.ruff",
 			"editor.formatOnSave": true,
@@ -15,6 +15,9 @@
 			}
 		},
 		"ruff.lint.enable": true,
+		"ruff.interpreter": [
+			"c:/Users/DharahasHanumanthu/Personal/Insights/backend/.venv/Scripts/python.exe"
+		],
 		"files.exclude": {
 			"**/__pycache__": true,
 			"**/*.pyc": true,
@@ -28,7 +31,8 @@
 			"**/__pycache__/**": true
 		},
 		"python.analysis.autoImportCompletions": true,
-		"python.terminal.activateEnvironment": true
+		"python.terminal.activateEnvironment": true,
+		"inlineChat.defaultModel": "claude-sonnet-4-5 (Added, Supports Agent Mode) (aitk-foundry)"
 	},
 	"extensions": {
 		"recommendations": [

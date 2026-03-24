@@ -6,12 +6,16 @@ from pathlib import Path
 from fastapi import APIRouter, UploadFile
 from fastapi.responses import StreamingResponse
 
-from app.services.documentService import DocumentEntry, process_document
+from app.constants import (
+    DOCUMENT_INDEX_PATH,
+    EMBEDDINGS_INDEX_PATH,
+    DocumentEntry,
+    DocumentIndex,
+)
+from app.services.documentService import process_document
 
 
 router = APIRouter(prefix="/document", tags=["Document"])
-
-DOCUMENT_INDEX_PATH = Path("uploads/document.json")
 
 
 @router.post("/upload")
@@ -25,12 +29,11 @@ async def upload_document(file: UploadFile):
         content = await file.read()
         buffer.write(content)
 
-    # Load existing document index
     if DOCUMENT_INDEX_PATH.exists():
         with open(DOCUMENT_INDEX_PATH) as f:
-            document_index = json.load(f)
+            document_index = DocumentIndex.model_validate_json(f.read())
     else:
-        document_index = {}
+        document_index = DocumentIndex(root={})
 
     # Create document status entry
     document_entry = DocumentEntry(
@@ -46,11 +49,11 @@ async def upload_document(file: UploadFile):
     )
 
     # Add to index
-    document_index[document_id] = document_entry.model_dump()
+    document_index.root[document_id] = document_entry
 
     # Save updated index
     with open(DOCUMENT_INDEX_PATH, "w") as f:
-        json.dump(document_index, f, indent=2)
+        f.write(document_index.model_dump_json(indent=2))
 
     return {
         "document_id": document_id,
@@ -62,7 +65,12 @@ async def upload_document(file: UploadFile):
 @router.get("/embed/{document_id}")
 async def embed_document(document_id: str):
     return StreamingResponse(
-        process_document(document_id), media_type="text/event-stream"
+        process_document(document_id),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+        },
     )
 
 
@@ -90,8 +98,9 @@ async def delete_document(document_id: str):
     filename = document_index[document_id]["filename"]
     Path(f"./uploads/{filename}").unlink(missing_ok=True)
     Path(f"./uploads/chunks/{document_id}_chunks.json").unlink(missing_ok=True)
+    Path(f"./uploads/parsed/{document_id}_parsed.json").unlink(missing_ok=True)
 
-    with open("./uploads/embeddings.json") as f:
+    with open(EMBEDDINGS_INDEX_PATH) as f:
         embeddings_index: list = json.load(f)
 
     new_embeddings_index = [
@@ -100,7 +109,7 @@ async def delete_document(document_id: str):
         if (index["metadata"]["document_id"] != document_id)
     ]
 
-    with open("./uploads/embeddings.json", "w") as f:
+    with open(EMBEDDINGS_INDEX_PATH, "w") as f:
         json.dump(new_embeddings_index, f, indent=2)
 
     del document_index[document_id]
@@ -108,4 +117,4 @@ async def delete_document(document_id: str):
     with open(DOCUMENT_INDEX_PATH, "w") as f:
         json.dump(document_index, f, indent=2)
 
-    return {"ok"}
+    return {"status": "ok"}

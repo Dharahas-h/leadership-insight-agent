@@ -4,6 +4,7 @@ from typing import Annotated
 from agent_framework import tool
 from pydantic import Field
 
+from app.constants import EMBEDDINGS_INDEX_PATH
 from app.services.embeddingService import get_embedding_service
 
 
@@ -17,7 +18,7 @@ async def get_relevant_information(
     embedding = await embedding_service.embed_text(text)
 
     similarity_array = []
-    with open("./uploads/embeddings.json") as f:
+    with open(EMBEDDINGS_INDEX_PATH) as f:
         embeddings_index: list = json.load(f)
 
     for chunk in embeddings_index:

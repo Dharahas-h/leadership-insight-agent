@@ -1,6 +1,18 @@
 import asyncio
+import json
+from collections.abc import AsyncGenerator
+from pathlib import Path
 
 import numpy as np
+
+from app.clients import embedding_client
+from app.constants import (
+    DOCUMENT_INDEX_PATH,
+    EMBEDDINGS_INDEX_PATH,
+    DocumentIndex,
+    EmbeddingsEntry,
+    EmbeddingsIndex,
+)
 
 
 class EmbeddingService:
@@ -28,8 +40,8 @@ class EmbeddingService:
         """
         # TODO: Replace with actual embedding model
         # For now, return a dummy embedding
-        await asyncio.sleep(0.1)  # Simulate API call
-        return np.random.rand(1536).tolist()
+        embedding = await embedding_client.get_embeddings([text])
+        return embedding[0].vector
 
     async def embed_texts_parallel(
         self, texts: list[str], batch_size: int = 10
@@ -102,3 +114,92 @@ def get_embedding_service(
         EmbeddingService instance
     """
     return EmbeddingService(model_name=model_name)
+
+
+async def embed_document(document_id: str) -> AsyncGenerator[str]:
+    """
+    Embed all chunks of a document in parallel batches.
+    Yields progress updates as Server-Sent Events.
+
+    Args:
+        document_id: The unique identifier for the document
+
+    Yields:
+        Progress updates in JSON format
+    """
+    try:
+        # Load document metadata
+        if not DOCUMENT_INDEX_PATH.exists():
+            yield f"data: {json.dumps({'status': 'error', 'message': 'Document index not found'})}\n\n"
+            return
+
+        with open(DOCUMENT_INDEX_PATH) as f:
+            document_index = DocumentIndex.model_validate_json(f.read())
+
+        if document_id not in document_index.root:
+            yield f"data: {json.dumps({'status': 'error', 'message': 'Document not found'})}\n\n"
+            return
+
+        chunks_path = document_index.root[document_id].chunks_path
+
+        if not chunks_path or not Path(chunks_path).exists():
+            yield f"data: {json.dumps({'status': 'error', 'message': 'Chunks file not found. Please process the document first.'})}\n\n"
+            return
+
+        # Update status to embedding
+        document_index.root[document_id].status = "embedding"
+        with open(DOCUMENT_INDEX_PATH, "w") as f:
+            f.write(document_index.model_dump_json(indent=2))
+
+        yield f"data: {json.dumps({'status': 'loading', 'message': 'Loading chunks...'})}\n\n"
+
+        # Load chunks
+        with open(chunks_path) as f:
+            chunks_data: list[dict] = json.load(f)
+
+        total_chunks = len(chunks_data)
+        yield f"data: {json.dumps({'status': 'loaded', 'message': f'Loaded {total_chunks} chunks'})}\n\n"
+
+        # Extract texts for embedding
+        texts = [chunk["text"] for chunk in chunks_data]
+
+        yield f"data: {json.dumps({'status': 'embedding', 'message': 'Generating embeddings in parallel...'})}\n\n"
+
+        # Generate embeddings in parallel
+        embedding_service = get_embedding_service()
+        embeddings = await embedding_service.embed_texts_parallel(texts, batch_size=10)
+
+        yield f"data: {json.dumps({'status': 'embedded', 'message': f'Generated {len(embeddings)} embeddings'})}\n\n"
+
+        # Add embeddings to chunks data
+        if EMBEDDINGS_INDEX_PATH.exists():
+            with open(EMBEDDINGS_INDEX_PATH) as f:
+                embeddings_index = EmbeddingsIndex.model_validate_json(f.read())
+        else:
+            embeddings_index = EmbeddingsIndex(root=[])
+
+        for chunk, embedding in zip(chunks_data, embeddings, strict=False):
+            embeddings_entry = EmbeddingsEntry(
+                chunk_id=chunk["chunk_id"],
+                chunk=chunk["text"],
+                metadata=chunk["metadata"],
+                embedding=embedding,
+            )
+            embeddings_index.root.append(embeddings_entry)
+        with open(EMBEDDINGS_INDEX_PATH, "w") as f:
+            f.write(embeddings_index.model_dump_json(indent=2))
+
+        # Update document entry
+        document_index.root[document_id].status = "completed"
+        document_index.root[document_id].embedded_chunks = total_chunks
+
+        with open(DOCUMENT_INDEX_PATH, "w") as f:
+            f.write(document_index.model_dump_json(indent=2))
+
+    except Exception as e:
+        document_index.root[document_id].status = "failed"
+        document_index.root[document_id].error = f"Embedding error: {e!s}"
+        with open(DOCUMENT_INDEX_PATH, "w") as f:
+            f.write(document_index.model_dump_json(indent=2))
+
+        yield f"data: {json.dumps({'status': 'error', 'message': f'Embedding failed: {e!s}'})}\n\n"

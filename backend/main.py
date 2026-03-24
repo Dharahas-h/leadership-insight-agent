@@ -7,7 +7,11 @@ from app.routers.chat import router as chat_router
 from app.routers.document import router as document_router
 
 
-configure_otel_providers(enable_sensitive_data=True, vs_code_extension_port=4317)
+configure_otel_providers(
+    enable_sensitive_data=True,
+    vs_code_extension_port=4317,
+    enable_console_exporters=True,
+)
 
 app = FastAPI(
     title="Leadership Insights Agent API",
@@ -28,4 +32,4 @@ app.add_middleware(
 
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=9000, reload=True)

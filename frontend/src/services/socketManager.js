@@ -1,10 +1,10 @@
+import { API_BASE_URL } from '../constants';
+
 class SocketManager {
   socket = null;
   connect(onMessage) {
     const sessionId = crypto.randomUUID();
-    this.socket = new WebSocket(
-      `http://localhost:8000/chat?sessionId=${sessionId}`
-    );
+    this.socket = new WebSocket(`${API_BASE_URL}/chat?sessionId=${sessionId}`);
     this.socket.onopen = event => {
       console.log('Web socket connection open');
     };
