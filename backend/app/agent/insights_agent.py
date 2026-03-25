@@ -1,20 +1,13 @@
 from agent_framework import Agent, AgentSession, Message
-from agent_framework.azure import AzureOpenAIResponsesClient
 
 from app.agent.tools import get_relevant_information
-from app.config import settings
+from app.clients import get_agent_client
 
 
 SESSIONS: dict[str, AgentSession] = {}
 
-client = AzureOpenAIResponsesClient(
-    endpoint=settings.azure_openai_base_url,
-    api_key=settings.azure_openai_key,
-    deployment_name=settings.openai_model_name,
-)
-
 insights_agent = Agent(
-    client=client,
+    client=get_agent_client(),
     id="insights_agent",
     instructions="""You are a Leadership Insights Agent designed to help users extract meaningful insights from uploaded documents.
 

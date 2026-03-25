@@ -10,6 +10,16 @@ from app.routers.document import DOCUMENT_INDEX_PATH
 
 
 async def parse_doc(document_id: str):
+    """
+    Parses document by its type
+    Yields progress updates as Server-Sent Events.
+
+    Args:
+        document_id: The unique identifier for the document
+
+    Yields:
+        Progress updates in JSON format
+    """
     with open(DOCUMENT_INDEX_PATH) as f:
         document_index = DocumentIndex.model_validate_json(f.read())
 
@@ -75,17 +85,3 @@ def _parse_pdf(file_path: str) -> list[dict[str, Any]]:
             }
         )
     return structured_elements
-
-
-# def _parse_docx(file_path: str) -> str:
-#     """
-#     Parse a DOCX file.
-#     Note: Requires python-docx library.
-#     """
-#     try:
-#         doc = Document(file_path)
-#         return "\n\n".join([paragraph.text for paragraph in doc.paragraphs])
-#     except ImportError:
-#         raise ImportError from ImportError(
-#             "python-docx is required for DOCX parsing. Install it with: pip install python-docx"
-#         )
