@@ -8,14 +8,14 @@ class Settings(BaseSettings):
     api_host: str = Field(default="0.0.0.0", env="API_HOST")
     api_port: int = Field(default=8000, env="API_PORT")
 
-    azure_openai_key: str = Field(default="", env="AZURE_OPENAI_KEY")
-    azure_openai_base_url: str = Field(default="", env="AZURE_OPENAI_BASE_URL")
-    azure_api_version: str = Field(default="", env="AZURE_API_VERSION")
+    openai_azure_key: str = Field(default="", env="OPENAI_AZURE_KEY")
+    openai_azure_base_url: str = Field(default="", env="OPENAI_AZURE_BASE_URL")
+    openai_azure_api_version: str = Field(default="", env="OPENAI_AZURE_API_VERSION")
 
-    openai_key: str = Field(default="", env="OPENAI_API_KEY")
-    openai_base_url: str = Field(default="", env="OPENAI_BASE_URL")
+    open_ai_key: str = Field(default="", env="OPEN_AI_KEY")
+    open_ai_url: str = Field(default="", env="OPEN_AI_URL")
 
-    openai_model_name: str = Field(default="gpt-5.2", env="OPENAI_MODEL_NAME")
+    model_name: str = Field(default="gpt-5.2", env="MODEL_NAME")
     embedding_model_name: str = Field(
         default="text-embedding-3-small", env="EMBEDDING_MODEL_NAME"
     )

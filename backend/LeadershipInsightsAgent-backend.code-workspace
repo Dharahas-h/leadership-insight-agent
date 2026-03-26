@@ -53,9 +53,9 @@
 				"name": "Python: Main",
 				"type": "debugpy",
 				"request": "launch",
-				"program": "${workspaceFolder}/main.py",
+				"program": "${workspaceFolder}\\main.py",
 				"console": "integratedTerminal",
-				"justMyCode": true
+				"justMyCode": false
 			}
 		]
 	}

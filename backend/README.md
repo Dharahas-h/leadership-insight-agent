@@ -32,24 +32,19 @@ cd c:\Users\Dharahas H\Kicks\Projects\LeadershipInsightsAgent\backend
 
 **Windows:**
 ```bash
-python -m venv venv
-venv\Scripts\activate
+python -m venv .venv
+.venv\Scripts\activate
 ```
 
 **macOS/Linux:**
 ```bash
-python -m venv venv
-source venv/bin/activate
+python -m venv .venv
+source .venv/bin/activate
 ```
 
 ### 3. Install Dependencies
 
-```bash
-pip install --upgrade pip
-pip install fastapi uvicorn pypdf2 python-docx opentelemetry-exporter-otlp-proto-grpc numpy httpx agent-framework-core "unstructured[pdf]"
-```
-
-Or install from the requirements file (if you create one):
+install from the requirements file (if you create one):
 ```bash
 pip install -r requirements.txt
 ```

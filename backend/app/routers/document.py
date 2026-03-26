@@ -107,14 +107,16 @@ async def delete_document(document_id: str):
         with open(EMBEDDINGS_INDEX_PATH) as f:
             embeddings_index = EmbeddingsIndex.model_validate_json(f.read())
 
-        new_embeddings_index = [
+        # Filter out embeddings for this document
+        embeddings_index.root = [
             index
             for index in embeddings_index.root
             if (index.metadata["document_id"] != document_id)
         ]
-        # Delete from embeddings index
+
+        # Save updated embeddings index
         with open(EMBEDDINGS_INDEX_PATH, "w") as f:
-            json.dump(EmbeddingsIndex(root=new_embeddings_index), f, indent=2)
+            f.write(embeddings_index.model_dump_json(indent=2))
 
     # Delete from document index
     del document_index[document_id]

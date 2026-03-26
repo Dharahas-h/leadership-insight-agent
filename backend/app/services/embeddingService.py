@@ -26,6 +26,9 @@ class EmbeddingService:
             model_name: Name of the embedding model to use
         """
         self.embedding_client = get_embedding_client()
+        print(
+            f"Embeddings deployment Name: {self.embedding_client.deployment_name}. endpoint: {self.embedding_client.endpoint}"
+        )
 
     async def embed_text(self, text: str) -> list[float] | None:
         """
@@ -103,9 +106,6 @@ class EmbeddingService:
         return float(similarity)
 
 
-embedding_service = EmbeddingService()
-
-
 def get_embedding_service() -> EmbeddingService:
     """
     Factory function to get an embedding service instance.
@@ -113,7 +113,7 @@ def get_embedding_service() -> EmbeddingService:
     Returns:
         EmbeddingService instance
     """
-    return embedding_service
+    return EmbeddingService()
 
 
 async def embed_document(document_id: str) -> AsyncGenerator[str]:
