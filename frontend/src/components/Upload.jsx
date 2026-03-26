@@ -81,7 +81,7 @@ function FileCard({ file, onDelete }) {
             </Typography>
           </div>
         </div>
-        {(status == 'completed' || status === 'failed') ? (
+        {status == 'completed' || status === 'failed' ? (
           <Button
             className="upload-button"
             variant="contained"
@@ -164,7 +164,17 @@ export default function Upload() {
   const handleDrop = useCallback(event => {
     event.preventDefault();
     const droppedFiles = Array.from(event.dataTransfer.files);
-    setFiles(prev => [...prev, ...droppedFiles]);
+    const pdfFiles = droppedFiles.filter(
+      file => file.type === 'application/pdf'
+    );
+
+    if (pdfFiles.length !== droppedFiles.length) {
+      alert('Only PDF files are allowed. Non-PDF files have been rejected.');
+    }
+
+    if (pdfFiles.length > 0) {
+      setFiles(prev => [...prev, ...pdfFiles]);
+    }
   }, []);
 
   const handleDelete = index => {
@@ -177,7 +187,17 @@ export default function Upload() {
 
   const handleFileSelect = event => {
     const selectedFiles = Array.from(event.target.files);
-    setFiles(prev => [...prev, ...selectedFiles]);
+    const pdfFiles = selectedFiles.filter(
+      file => file.type === 'application/pdf'
+    );
+
+    if (pdfFiles.length !== selectedFiles.length) {
+      alert('Only PDF files are allowed. Non-PDF files have been rejected.');
+    }
+
+    if (pdfFiles.length > 0) {
+      setFiles(prev => [...prev, ...pdfFiles]);
+    }
     event.target.value = '';
   };
 
