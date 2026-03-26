@@ -1,152 +1,34 @@
 # Leadership Insights Agent
 
-An AI-powered agent for providing leadership insights with a modern web interface.
+An AI-powered application that provides leadership insights through document analysis and interactive chat capabilities.
 
-## 🏗️ Project Structure
+## Project Structure
 
-```
-LeadershipInsightsAgent/
-├── backend/          # FastAPI backend
-│   ├── main.py       # API endpoints
-│   ├── config.py     # Configuration
-│   └── pyproject.toml
-└── frontend/         # React frontend
-    ├── src/
-    │   ├── components/
-    │   │   ├── ChatInterface.jsx
-    │   │   └── DocumentUpload.jsx
-    │   ├── App.jsx
-    │   └── main.jsx
-    └── package.json
-```
+This project is organized into two main components:
 
-## 🚀 Quick Start
+- **`backend/`** - Python-based backend service that handles document processing, AI agent logic, and API endpoints. See [backend/README.md](backend/README.md) for detailed setup and usage instructions.
 
-### Backend Setup
+- **`frontend/`** - React-based web interface for document upload and chat interactions. See [frontend/README.md](frontend/README.md) for detailed setup and usage instructions.
 
-1. Navigate to the backend directory:
-   ```bash
-   cd backend
-   ```
+## Getting Started
 
-2. Install dependencies with Poetry:
-   ```bash
-   poetry install
-   ```
+To run this application, you'll need to set up both the backend and frontend services. Please refer to the README files in each respective folder for detailed instructions on:
 
-3. Create environment file:
-   ```bash
-   copy .env.example .env
-   ```
-   *(Edit `.env` to add your API keys when ready)*
+- Installation and dependencies
+- Configuration requirements
+- Running the services
+- Development guidelines
 
-4. Run the backend server:
-   ```bash
-   poetry run python main.py
-   ```
-   
-   Backend will run at: **http://localhost:8000**
+## Quick Start
 
-### Frontend Setup
+1. Set up and start the backend service (see `backend/README.md`)
+2. Set up and start the frontend application (see `frontend/README.md`)
+3. Access the web interface to upload documents and interact with the leadership insights agent
 
-1. Navigate to the frontend directory:
-   ```bash
-   cd frontend
-   ```
+## Features
 
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-
-3. Start the development server:
-   ```bash
-   npm run dev
-   ```
-   
-   Frontend will run at: **http://localhost:5173**
-
-## 🎯 Features
-
-- **💬 Chat Interface**: Interactive chat with the Leadership Insights Agent
-- **📄 Document Upload**: Upload and analyze leadership documents (PDF, DOCX, TXT, MD)
-- **🎨 Modern UI**: Beautiful gradient design with smooth animations
-- **🔌 REST API**: FastAPI backend with automatic documentation
-
-## 📚 API Documentation
-
-Once the backend is running, visit:
-- **Swagger UI**: http://localhost:8000/docs
-- **ReDoc**: http://localhost:8000/redoc
-
-## 🛠️ Development
-
-### Backend Development
-
-This project uses:
-- **FastAPI** for the web framework
-- **Poetry** for dependency management
-- **Ruff** for linting and formatting
-
-Linting:
-```bash
-poetry run ruff check .
-```
-
-Formatting:
-```bash
-poetry run ruff format .
-```
-
-Auto-fix issues:
-```bash
-poetry run ruff check --fix .
-```
-
-### Frontend Development
-
-Build for production:
-```bash
-npm run build
-```
-
-Preview production build:
-```bash
-npm run preview
-```
-
-Lint code:
-```bash
-npm run lint
-```
-
-## 🔧 Configuration
-
-### Backend Configuration
-
-Edit `backend/.env` to configure:
-- API host and port
-- AI model API keys (OpenAI, Azure OpenAI, etc.)
-- Upload settings
-
-### Frontend Configuration
-
-Edit `frontend/vite.config.js` to:
-- Change dev server port
-- Configure API proxy settings
-
-## 📝 Next Steps
-
-1. **Add AI Integration**: Integrate with OpenAI, Azure OpenAI, or Microsoft Agent Framework
-2. **Database**: Add PostgreSQL or MongoDB for conversation history
-3. **Authentication**: Implement user authentication and authorization
-4. **Analytics**: Add leadership analytics dashboard
-5. **Deployment**: Deploy to Azure, AWS, or your preferred cloud platform
-
-## 🤝 Contributing
-
-Feel free to submit issues and enhancement requests!
-
-## 📄 License
-
-MIT License
+- Document upload and processing
+- AI-powered leadership insights
+- Real-time chat interface
+- Document chunking and embedding
+- Interactive analysis and recommendations
