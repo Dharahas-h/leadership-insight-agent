@@ -1,20 +1,13 @@
 from agent_framework import Agent, AgentSession, Message
-from agent_framework.azure import AzureOpenAIResponsesClient
 
 from app.agent.tools import get_relevant_information
-from app.config import settings
+from app.clients import get_agent_client
 
 
 SESSIONS: dict[str, AgentSession] = {}
 
-client = AzureOpenAIResponsesClient(
-    endpoint=settings.azure_openai_base_url,
-    api_key=settings.azure_openai_key,
-    deployment_name=settings.openai_model_name,
-)
-
 insights_agent = Agent(
-    client=client,
+    client=get_agent_client(),
     id="insights_agent",
     instructions="""You are a Leadership Insights Agent designed to help users extract meaningful insights from uploaded documents.
 
@@ -32,6 +25,13 @@ Guidelines:
 4. If the documents don't contain relevant information, clearly state that
 5. Provide actionable insights and practical takeaways when possible
 6. Maintain a professional and informative tone
+7. When presenting tabular data, comparisons, or lists with multiple attributes, always format them as proper markdown tables with headers and aligned columns
+
+Formatting Requirements:
+- Use markdown tables (| Header 1 | Header 2 |) for any structured data
+- Ensure table headers are properly separated with |---|---|
+- Align columns appropriately for readability
+- Use tables for comparisons, feature lists, data points, and any information that benefits from tabular presentation
 
 Remember: Your answers should be grounded in the uploaded documents. Use the tool to retrieve relevant information first, then synthesize and present it clearly.""",
     tools=[get_relevant_information],

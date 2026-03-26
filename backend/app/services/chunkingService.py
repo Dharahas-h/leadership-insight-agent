@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
+from deprecated import deprecated
 from pydantic import BaseModel
 
 from app.constants import DOCUMENT_INDEX_PATH, DocumentIndex
@@ -37,6 +38,7 @@ class ChunkingStrategy:
         raise NotImplementedError
 
 
+@deprecated
 class FixedSizeChunking(ChunkingStrategy):
     """Chunks text into fixed-size pieces with optional overlap."""
 
@@ -78,6 +80,7 @@ class FixedSizeChunking(ChunkingStrategy):
         return chunks
 
 
+@deprecated
 class SentenceChunking(ChunkingStrategy):
     """Chunks text by sentences, grouping them up to a target size."""
 
@@ -150,6 +153,7 @@ class SentenceChunking(ChunkingStrategy):
         return [s.strip() for s in sentences if s.strip()]
 
 
+@deprecated
 class ParagraphChunking(ChunkingStrategy):
     """Chunks text by paragraphs, combining small ones."""
 
@@ -409,6 +413,7 @@ async def chunk_parsed_document(document_id: str, strategy: str = "structure"):
 
     except Exception as e:
         document_index.root[document_id].error = f"Chunking error: {e!s}"
+        print(f"Chunking error: {e}")
         with open(DOCUMENT_INDEX_PATH, "w") as f:
             f.write(document_index.model_dump_json(indent=2))
         yield f"data: {json.dumps({'status': 'error', 'message': f'Chunking failed: {e!s}'})}\n\n"

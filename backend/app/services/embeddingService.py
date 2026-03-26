@@ -5,7 +5,7 @@ from pathlib import Path
 
 import numpy as np
 
-from app.clients import embedding_client
+from app.clients import get_embedding_client
 from app.constants import (
     DOCUMENT_INDEX_PATH,
     EMBEDDINGS_INDEX_PATH,
@@ -18,17 +18,19 @@ from app.constants import (
 class EmbeddingService:
     """Service for generating embeddings from text chunks."""
 
-    def __init__(self, model_name: str = "text-embedding-3-small"):
+    def __init__(self):
         """
         Initialize the embedding service.
 
         Args:
             model_name: Name of the embedding model to use
         """
-        self.model_name = model_name
-        # TODO: Initialize actual embedding model (OpenAI, Sentence Transformers, etc.)
+        self.embedding_client = get_embedding_client()
+        print(
+            f"Embeddings deployment Name: {self.embedding_client.deployment_name}. endpoint: {self.embedding_client.endpoint}"
+        )
 
-    async def embed_text(self, text: str) -> list[float]:
+    async def embed_text(self, text: str) -> list[float] | None:
         """
         Generate embedding for a single text.
 
@@ -38,14 +40,17 @@ class EmbeddingService:
         Returns:
             List of floats representing the embedding vector
         """
-        # TODO: Replace with actual embedding model
-        # For now, return a dummy embedding
-        embedding = await embedding_client.get_embeddings([text])
-        return embedding[0].vector
+        try:
+            embedding = await self.embedding_client.get_embeddings([text])
+            return embedding[0].vector
+        except Exception as e:
+            print(f"Warning unable to Embed Text: {text}")
+            print(f"Exception: {e}")
+            return None
 
     async def embed_texts_parallel(
         self, texts: list[str], batch_size: int = 10
-    ) -> list[list[float]]:
+    ) -> list[list[float] | None]:
         """
         Generate embeddings for multiple texts in parallel batches.
 
@@ -101,19 +106,14 @@ class EmbeddingService:
         return float(similarity)
 
 
-def get_embedding_service(
-    model_name: str = "text-embedding-3-small",
-) -> EmbeddingService:
+def get_embedding_service() -> EmbeddingService:
     """
     Factory function to get an embedding service instance.
-
-    Args:
-        model_name: Name of the embedding model to use
 
     Returns:
         EmbeddingService instance
     """
-    return EmbeddingService(model_name=model_name)
+    return EmbeddingService()
 
 
 async def embed_document(document_id: str) -> AsyncGenerator[str]:
@@ -151,19 +151,14 @@ async def embed_document(document_id: str) -> AsyncGenerator[str]:
         with open(DOCUMENT_INDEX_PATH, "w") as f:
             f.write(document_index.model_dump_json(indent=2))
 
-        yield f"data: {json.dumps({'status': 'loading', 'message': 'Loading chunks...'})}\n\n"
-
         # Load chunks
         with open(chunks_path) as f:
             chunks_data: list[dict] = json.load(f)
 
-        total_chunks = len(chunks_data)
-        yield f"data: {json.dumps({'status': 'loaded', 'message': f'Loaded {total_chunks} chunks'})}\n\n"
-
         # Extract texts for embedding
         texts = [chunk["text"] for chunk in chunks_data]
 
-        yield f"data: {json.dumps({'status': 'embedding', 'message': 'Generating embeddings in parallel...'})}\n\n"
+        yield f"data: {json.dumps({'status': 'embedding', 'message': f'Generating embeddings for {len(chunks_data)} chunks'})}\n\n"
 
         # Generate embeddings in parallel
         embedding_service = get_embedding_service()
@@ -178,7 +173,9 @@ async def embed_document(document_id: str) -> AsyncGenerator[str]:
         else:
             embeddings_index = EmbeddingsIndex(root=[])
 
-        for chunk, embedding in zip(chunks_data, embeddings, strict=False):
+        for chunk, embedding in zip(chunks_data, embeddings, strict=True):
+            if embedding is None:
+                continue
             embeddings_entry = EmbeddingsEntry(
                 chunk_id=chunk["chunk_id"],
                 chunk=chunk["text"],
@@ -191,14 +188,15 @@ async def embed_document(document_id: str) -> AsyncGenerator[str]:
 
         # Update document entry
         document_index.root[document_id].status = "completed"
-        document_index.root[document_id].embedded_chunks = total_chunks
+        document_index.root[document_id].embedded_chunks = len(chunks_data)
 
         with open(DOCUMENT_INDEX_PATH, "w") as f:
             f.write(document_index.model_dump_json(indent=2))
 
     except Exception as e:
         document_index.root[document_id].status = "failed"
-        document_index.root[document_id].error = f"Embedding error: {e!s}"
+        document_index.root[document_id].error = f"Embedding error: {e!s}\n"
+        print(f"Embedding error: {e}")
         with open(DOCUMENT_INDEX_PATH, "w") as f:
             f.write(document_index.model_dump_json(indent=2))
 

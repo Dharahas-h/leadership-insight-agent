@@ -11,6 +11,7 @@ from app.constants import (
     EMBEDDINGS_INDEX_PATH,
     DocumentEntry,
     DocumentIndex,
+    EmbeddingsIndex,
 )
 from app.services.documentService import process_document
 
@@ -93,25 +94,31 @@ async def delete_document(document_id: str):
         document_index = json.load(f)
 
     if document_id not in document_index:
-        return {"deleted"}
+        return {"status": "ok"}
 
     filename = document_index[document_id]["filename"]
+
+    # Delete file, chunks and parsed content
     Path(f"./uploads/{filename}").unlink(missing_ok=True)
     Path(f"./uploads/chunks/{document_id}_chunks.json").unlink(missing_ok=True)
     Path(f"./uploads/parsed/{document_id}_parsed.json").unlink(missing_ok=True)
 
-    with open(EMBEDDINGS_INDEX_PATH) as f:
-        embeddings_index: list = json.load(f)
+    if EMBEDDINGS_INDEX_PATH.exists():
+        with open(EMBEDDINGS_INDEX_PATH) as f:
+            embeddings_index = EmbeddingsIndex.model_validate_json(f.read())
 
-    new_embeddings_index = [
-        index
-        for index in embeddings_index
-        if (index["metadata"]["document_id"] != document_id)
-    ]
+        # Filter out embeddings for this document
+        embeddings_index.root = [
+            index
+            for index in embeddings_index.root
+            if (index.metadata["document_id"] != document_id)
+        ]
 
-    with open(EMBEDDINGS_INDEX_PATH, "w") as f:
-        json.dump(new_embeddings_index, f, indent=2)
+        # Save updated embeddings index
+        with open(EMBEDDINGS_INDEX_PATH, "w") as f:
+            f.write(embeddings_index.model_dump_json(indent=2))
 
+    # Delete from document index
     del document_index[document_id]
 
     with open(DOCUMENT_INDEX_PATH, "w") as f:
